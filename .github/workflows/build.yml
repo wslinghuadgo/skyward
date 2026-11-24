@@ -5,9 +5,8 @@ name: Build
 # those zips as a release, each shown as the phone it is for. Run by hand,
 # it can build for one device alone.
 on:
-  push:
-    branches: ["**"]
-    tags: ["v*"]
+  # Built when asked, by hand or by the nightly sync, so that a night's
+  # build is the K60 Pro's alone and not every device's.
   workflow_dispatch:
     inputs:
       device:
