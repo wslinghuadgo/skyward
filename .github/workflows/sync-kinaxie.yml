@@ -1,0 +1,35 @@
+name: Sync with Kinaxie
+
+# Every night, take the upstream's newest main under this branch's own
+# commits, and build the K60 Pro image from what came out. Run by hand, it
+# does the same at once.
+on:
+  schedule:
+    - cron: "17 19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  sync:
+    name: Take the upstream's main under this branch and build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: socrates
+          fetch-depth: 0
+      - name: Rebase this branch's own commits onto the upstream's main
+        run: |
+          git config user.name "skyward sync"
+          git config user.email "sync@users.noreply.github.com"
+          git remote add upstream https://github.com/Kinaxie/skyward.git
+          git fetch upstream main
+          git rebase upstream/main
+          git push --force-with-lease origin socrates
+      - name: Build the K60 Pro image from what was taken
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run build.yml --ref socrates -f device=socrates
