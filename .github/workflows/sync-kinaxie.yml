@@ -32,4 +32,7 @@ jobs:
       - name: Build the K60 Pro image from what was taken
         env:
           GH_TOKEN: ${{ github.token }}
+          # gh picks a remote to name the repository by, and this one names
+          # the upstream; the workflow belongs to this repository.
+          GH_REPO: ${{ github.repository }}
         run: gh workflow run build.yml --ref socrates -f device=socrates
