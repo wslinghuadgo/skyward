@@ -109,9 +109,21 @@ capabilities = ["SYS_NICE"]
 # /mnt/system, and the older kind's from system_ext, or from the system
 # partition on a build that keeps it there. Each is passed over where it
 # is not there, and does not hold up the services after it.
+#
+# The installed system is a system-as-root image: the phone mounts it at /,
+# so its programs are under /system and its libraries under /system/lib64,
+# and the recovery mounts the same image at /mnt/system. Every path in it
+# is therefore one directory further in than on a phone that mounts the
+# image at /system: /mnt/system/system/bin and /mnt/system/system/lib64.
+# Naming /mnt/system/lib64 instead finds nothing, and the loader then falls
+# through to the v33 VNDK APEX named below, whose libutils has a
+# libvndksupport this phone's APEX does not carry: hwservicemanager cannot
+# start, so nothing registers with it and the credential service never
+# answers. system_ext is its own partition and is mounted at
+# /mnt/system_ext, so that path is not one level in.
 [[service]]
-path = "/mnt/system/bin/servicemanager"
-libraries = ["/mnt/system/lib64/bootstrap", "/mnt/system/lib64", "/mnt/system_ext/lib64"]
+path = "/mnt/system/system/bin/servicemanager"
+libraries = ["/mnt/system/system/lib64/bootstrap", "/mnt/system/system/lib64", "/mnt/system_ext/lib64"]
 ready_property = "servicemanager.ready"
 optional = true
 user = "system"
@@ -119,15 +131,20 @@ groups = ["system", "readproc"]
 
 [[service]]
 path = "/mnt/system_ext/bin/hwservicemanager"
-libraries = ["/mnt/system/lib64/bootstrap", "/mnt/system/lib64", "/mnt/system_ext/lib64"]
+libraries = ["/mnt/system/system/lib64/bootstrap", "/mnt/system/system/lib64", "/mnt/system_ext/lib64"]
 ready_property = "hwservicemanager.ready"
 optional = true
 user = "system"
 groups = ["system", "readproc"]
 
+# This build keeps hwservicemanager in system_ext and links to it from
+# system/bin, and that link names /system/system_ext outright, which in a
+# recovery is not where system_ext is mounted: the entry above is the one
+# that runs, and this one is for a build that keeps the program in the
+# system partition itself.
 [[service]]
-path = "/mnt/system/bin/hwservicemanager"
-libraries = ["/mnt/system/lib64/bootstrap", "/mnt/system/lib64", "/mnt/system_ext/lib64"]
+path = "/mnt/system/system/bin/hwservicemanager"
+libraries = ["/mnt/system/system/lib64/bootstrap", "/mnt/system/system/lib64", "/mnt/system_ext/lib64"]
 ready_property = "hwservicemanager.ready"
 optional = true
 user = "system"
