@@ -35,4 +35,14 @@ jobs:
           # gh picks a remote to name the repository by, and this one names
           # the upstream; the workflow belongs to this repository.
           GH_REPO: ${{ github.repository }}
-        run: gh workflow run build.yml --ref socrates -f device=socrates
+        run: |
+          # The dispatch endpoint answers HTTP 500 now and then, and a
+          # night's build must not be lost to one of those.
+          for attempt in 1 2 3 4 5; do
+            if gh workflow run build.yml --ref socrates -f device=socrates; then
+              exit 0
+            fi
+            echo "the dispatch did not go through (attempt $attempt); trying again"
+            sleep 20
+          done
+          exit 1
