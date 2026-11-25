@@ -35,7 +35,10 @@ impl Decryptor {
     pub fn start(job: Job) -> Result<Decryptor> {
         let worker = Worker::start("decrypt", move |tell| {
             tell.tell(match job {
-                Job::Open => Ended::Opened(with_data_keys(data::open_without_credential)),
+                // The programs that hold the keys start behind the screen,
+                // so a look taken before they are there waits and looks
+                // again rather than saying the partition cannot be opened.
+                Job::Open => Ended::Opened(again_while_starting(|| with_data_keys(data::open_without_credential))),
                 Job::Unlock { closed, user, credential } => {
                     Ended::Unlocked(with_key_service(|service| data::unlock(service, &closed, user, &credential)))
                 }
@@ -75,6 +78,21 @@ fn key_diagnostics() -> String {
         at("/mnt/system/bin/servicemanager"),
         at("/vendor/bin/hw/android.hardware.security.keymint-service-qti"),
     )
+}
+
+/// Do `work`, and where it ended because the key service was not running
+/// yet, do it again for a while.
+fn again_while_starting<T>(work: impl Fn() -> Result<T, String>) -> Result<T, String> {
+    let mut waited = 0;
+    loop {
+        match work() {
+            Err(why) if why.contains("is not running") && waited < 20 => {
+                std::thread::sleep(std::time::Duration::from_secs(2));
+                waited += 1;
+            }
+            other => return other,
+        }
+    }
 }
 
 /// Do `work` with the phone's key service, reached afresh for it, and say
